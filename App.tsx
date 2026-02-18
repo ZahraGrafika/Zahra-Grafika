@@ -1,0 +1,99 @@
+
+import React, { useState, useEffect, useCallback } from 'react';
+import Login from './components/Login';
+import Dashboard from './components/Dashboard';
+import Sidebar from './components/Sidebar';
+import Topbar from './components/Topbar';
+import POS from './components/pos/POS';
+import Customers from './components/master_data/Customers';
+import Products from './components/master_data/Products';
+import Expenses from './components/Expenses';
+import Reports from './components/reports/Reports';
+import Settings from './components/Settings';
+import DataPesanan from './components/pesanan/DataPesanan';
+import { CompanyProfile, ViewType, AdminUser } from './types';
+import { getCompanyProfile, initializeData } from './services/dataService';
+import LaporanPenjualanHarian from './components/reports/LaporanPenjualanHarian';
+import LaporanTransaksiPelanggan from './components/reports/LaporanTransaksiPelanggan';
+import SettingsAdmin from './components/SettingsAdmin';
+import BackupData from './components/BackupData';
+
+const App: React.FC = () => {
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
+  const [activeView, setActiveView] = useState<ViewType>('pos');
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+
+  const refreshProfile = useCallback(() => {
+    setCompanyProfile(getCompanyProfile());
+  }, []);
+
+  useEffect(() => {
+    initializeData();
+    refreshProfile();
+    // Check for saved auth state
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      setCurrentUser(JSON.parse(savedUser));
+    }
+  }, [refreshProfile]);
+
+  const handleLogin = (user: AdminUser) => {
+    setCurrentUser(user);
+    localStorage.setItem('currentUser', JSON.stringify(user));
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('currentUser');
+    setActiveView('dashboard');
+  };
+
+  if (!currentUser) {
+    return <Login onLogin={handleLogin} />;
+  }
+  
+  const renderView = () => {
+    switch (activeView) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'pos':
+        return <POS currentUser={currentUser} />;
+      case 'data-pesanan':
+        return <DataPesanan currentUser={currentUser} />;
+      case 'master-customers':
+        return <Customers />;
+      case 'master-products':
+        return <Products />;
+      case 'expenses':
+        return <Expenses />;
+      case 'reports':
+        return <Reports currentUser={currentUser} />;
+      case 'laporan-penjualan':
+        return <LaporanPenjualanHarian />;
+      case 'laporan-pelanggan':
+        return <LaporanTransaksiPelanggan currentUser={currentUser} />;
+      case 'settings-app':
+        return <Settings onProfileUpdate={refreshProfile} />;
+      case 'settings-admin':
+        return <SettingsAdmin />;
+      case 'backup-data':
+        return <BackupData />;
+      default:
+        return <Dashboard />;
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-slate-200 text-slate-800">
+      <Sidebar activeView={activeView} setActiveView={setActiveView} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Topbar companyProfile={companyProfile} currentUser={currentUser} onLogout={handleLogout} />
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-6">
+          {renderView()}
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default App;
